@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-//#include "stm32f1xx_hal_i2c.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -78,7 +77,7 @@ void MPU6050_GetAllData(int16_t *data);
 void MPU6050_Read(uint8_t I2C_ADDRESS, uint8_t reg_addr, uint8_t *p_tx_buf, uint8_t tx_buf_size)
 {
   MPU6050_Write(I2C_ADDRESS, &reg_addr, 1);
-  while(HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDRESS<<1, p_tx_buf, tx_buf_size, 100) != HAL_OK)
+  while(HAL_I2C_Master_Receive(&hi2c1, I2C_ADDRESS<<1, p_tx_buf, tx_buf_size, 100) != HAL_OK)
   {
     if(HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
     {
@@ -91,7 +90,7 @@ void MPU6050_Read(uint8_t I2C_ADDRESS, uint8_t reg_addr, uint8_t *p_tx_buf, uint
 
 void MPU6050_Write(uint8_t I2C_ADDRESS, uint8_t *p_rx_buf, uint8_t rx_buf_size)
 {
-  while(HAL_I2C_Master_Receive(&hi2c1, I2C_ADDRESS<<1, p_rx_buf, rx_buf_size, 100) != HAL_OK)
+  while(HAL_I2C_Master_Transmit(&hi2c1, I2C_ADDRESS<<1, p_rx_buf, rx_buf_size, 100) != HAL_OK)
   {
     Error_Handler();
   }
@@ -249,7 +248,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 1000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
