@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -68,11 +69,27 @@ static void MX_I2C1_Init(void);
 #define MPU6050_REG_ACCEL_ZOUT_H (uint8_t)0x3F
 #define MPU6050_REG_ACCEL_ZOUT_L (uint8_t)0x40
 
+typedef struct 
+{
+  int16_t accel_x_out;
+  int16_t accel_y_out;
+  int16_t accel_z_out;
+  int16_t temp_out;
+  int16_t gyro_x_out;
+  int16_t gyro_y_out;
+  int16_t gyro_z_out;
+} t_XYZ;
+
+
+
+int16_t gy_data[14];
+
+t_XYZ *XYZ;
 
 void MPU6050_Read(uint8_t I2C_ADDRESS, uint8_t reg_addr, uint8_t *p_tx_buf, uint8_t tx_buf_size);
 void MPU6050_Write(uint8_t I2C_ADDRESS, uint8_t *p_rx_buf, uint8_t rx_buf_size);
 void MPU6050_Init(void);
-void MPU6050_GetAllData(int16_t *data);
+void MPU6050_GetAllData(uint8_t *data);
 
 void MPU6050_Read(uint8_t I2C_ADDRESS, uint8_t reg_addr, uint8_t *p_tx_buf, uint8_t tx_buf_size)
 {
@@ -121,17 +138,17 @@ void MPU6050_Calibrate(void)
   
   for(int i = 0; i < meg_num; ++i)
   {
-    MPU6050_GetAllData(buf);
+//    MPU6050_GetAllData(buf);
     
   }
 }
 
-void MPU6050_GetAllData(int16_t *data)
+void MPU6050_GetAllData(uint8_t *data)
 {
   uint8_t buf[14];
   
-  MPU6050_Read(MPU6050_ADDRESS_I2C, MPU6050_REG_ACCEL_XOUT_H, buf, 14);
-  
+  MPU6050_Read(MPU6050_ADDRESS_I2C, MPU6050_REG_ACCEL_XOUT_H, data, 14);
+
   for(int i = 0; i < 3; ++i)
   {
     data[i] = (int16_t)((uint16_t)buf[2*i+1]);
@@ -145,7 +162,7 @@ void MPU6050_GetAllData(int16_t *data)
   }
 }
 
-int16_t gy_data[14];
+
 /* USER CODE END 0 */
 
 /**
@@ -177,6 +194,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   MPU6050_Init();
   /* USER CODE END 2 */
@@ -185,7 +203,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    MPU6050_GetAllData(gy_data);
+    MPU6050_GetAllData((uint8_t*)gy_data);
+    XYZ = (t_XYZ*)gy_data;
+//    x = XYZ->accel_x_out;
     HAL_Delay(100);
     /* USER CODE END WHILE */
 
@@ -202,6 +222,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -212,7 +233,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL2;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -223,10 +244,16 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
